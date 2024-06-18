@@ -4,13 +4,14 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from sklearn.cluster import SpectralClustering
-
+from functools import lru_cache
 
 def frechet_distance(x, y):
     n, m = len(x), len(y)
     ca = np.ones((n, m)) * -1
 
     # c for cols and r for rows
+    @lru_cache(None)
     def _c(c, r):
         if ca[c, r] > -1:
             return ca[c, r]
