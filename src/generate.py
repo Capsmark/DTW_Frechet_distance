@@ -1,33 +1,35 @@
+import os
+
 import pandas as pd
 import numpy as np
 from collections import defaultdict
 from sklearn.cluster import SpectralClustering
 
-# Function to compute the Fréchet distance between two sequences
-def frechet_distance(X, Y):
-    n = len(X)
-    m = len(Y)
+
+def frechet_distance(x, y):
+    n, m = len(x), len(y)
     ca = np.ones((n, m)) * -1
 
-    def _c(i, j):
-        if ca[i, j] > -1:
-            return ca[i, j]
-        if i == 0 and j == 0:
-            ca[i, j] = np.linalg.norm(X[0] - Y[0])
-        elif i > 0 and j == 0:
-            ca[i, j] = max(_c(i-1, 0), np.linalg.norm(X[i] - Y[0]))
-        elif i == 0 and j > 0:
-            ca[i, j] = max(_c(0, j-1), np.linalg.norm(X[0] - Y[j]))
-        elif i > 0 and j > 0:
-            ca[i, j] = max(min(_c(i-1, j), _c(i-1, j-1), _c(i, j-1)), np.linalg.norm(X[i] - Y[j]))
-        else:
-            ca[i, j] = float('inf')
-        return ca[i, j]
+    # c for cols and r for rows
+    def _c(c, r):
+        if ca[c, r] > -1:
+            return ca[c, r]
+        if c == 0 and r == 0:
+            ca[c, r] = np.linalg.norm(x[0] - y[0])
+        elif c > 0 and r == 0:
+            ca[c, r] = max(_c(c - 1, 0), np.linalg.norm(x[c] - y[0]))
+        elif c == 0 and r > 0:
+            ca[c, r] = max(_c(0, r - 1), np.linalg.norm(x[0] - y[r]))
+        else:  # i > 0 and j > 0
+            ca[c, r] = max(min(_c(c - 1, r), _c(c - 1, r - 1), _c(c, r - 1)), np.linalg.norm(x[c] - y[r]))
+        return ca[c, r]
 
     return _c(n-1, m-1)
 
+
 # Load the dataset
-file_path = 'E:\DTW_Frechet_distance\data\jan_feb_2024_subset.csv'
+repo_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+file_path = os.path.join(repo_folder, 'data', 'jan_feb_2024_subset.csv')
 df = pd.read_csv(file_path)
 
 # Convert datetime column to pandas datetime
@@ -55,7 +57,6 @@ for i in range(num_sequences):
         distance_matrix[j, i] = distance
 
 
-
 # Convert the distance matrix to an affinity matrix using the RBF kernel
 sigma = np.median(distance_matrix)  # or choose another suitable value for sigma
 affinity_matrix = np.exp(-distance_matrix ** 2 / (2. * sigma ** 2))
@@ -68,5 +69,10 @@ labels = spectral.fit_predict(affinity_matrix)
 # Add cluster labels to the dataframe
 df['cluster'] = df['index'].map(dict(zip(sequences.keys(), labels)))
 
+# Ensure the export directory exists
+export_dir = os.path.join(repo_folder, 'export')
+os.makedirs(export_dir, exist_ok=True)
+
 # Save the results
-df.to_csv('E:\\sigai\\clustered_data.csv')
+output_path = os.path.join(export_dir, 'clustered_data.csv')
+df.to_csv(output_path)
